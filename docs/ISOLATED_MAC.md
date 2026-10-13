@@ -41,8 +41,8 @@ docker compose version
 
 The Compose file leaves `platform` unset. Builds use the Mac's native Linux
 architecture: `linux/arm64` on Apple silicon, `linux/amd64` on Intel. Python uses
-`docker/requirements.isolated.txt` with hashes; npm uses `package-lock.json`.
-The fork's `uv.lock` is stale and is not used by this image.
+`docker/requirements.isolated.txt` with hashes; npm uses `docker/browser/package-lock.json`.
+The fork's root Python and npm lockfiles are stale and are not used by this image.
 The dedicated workflow builds and smoke
 tests both architectures with QEMU. A successful emulated test is not a native
 Mac test. If a dependency fails on arm64, inspect the build error first. Do not
@@ -69,6 +69,8 @@ excludes environment files, credentials, backups, and local virtual environments
 The original `Dockerfile` remains available for other use cases. This deployment
 uses `docker/Dockerfile.isolated` and installs messaging, cron, PTY, and MCP
 dependencies. It does not include every optional integration or local voice model.
+It installs only agent-browser for local Chromium; the optional Camofox server
+from the root npm package is omitted.
 
 Builds are repeatable from a recorded commit and locked app dependencies, not
 byte-for-byte reproducible: the Debian tag and apt repositories can change.

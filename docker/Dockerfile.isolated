@@ -13,9 +13,9 @@ COPY . .
 RUN python3 -m venv .venv \
     && uv pip sync --python .venv/bin/python --require-hashes docker/requirements.isolated.txt \
     && uv pip install --python .venv/bin/python --no-deps -e .
-RUN npm ci
+RUN npm ci --prefix docker/browser
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/chromium
-RUN ./node_modules/.bin/agent-browser install --with-deps \
+RUN node ./docker/browser/node_modules/playwright-core/cli.js install --with-deps chromium \
     && chmod -R a+rX /opt/chromium \
     && rm -rf /var/lib/apt/lists/* /root/.cache
 
@@ -23,7 +23,7 @@ RUN groupadd --gid 10001 hermes && useradd --uid 10001 --gid 10001 \
     --home-dir /opt/data/home --no-create-home --shell /bin/bash hermes \
     && mkdir -p /opt/data/home /opt/data/workspace \
     && chown -R 10001:10001 /opt/data
-ENV PATH=/opt/hermes/.venv/bin:/opt/hermes/node_modules/.bin:$PATH \
+ENV PATH=/opt/hermes/.venv/bin:/opt/hermes/docker/browser/node_modules/.bin:$PATH \
     HERMES_HOME=/opt/data HOME=/opt/data/home \
     PYTHONDONTWRITEBYTECODE=1
 USER 10001:10001
