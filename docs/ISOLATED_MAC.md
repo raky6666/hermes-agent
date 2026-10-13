@@ -125,6 +125,9 @@ values = {
 values['TELEGRAM_HOME_CHANNEL'] = values['TELEGRAM_ALLOWED_USERS']
 with path.open('x') as output:
     json.dump(values, output)
+# A 0700 parent protects this host file; read permission supports the
+# non-root Linux user when Compose mounts the dedicated file.
+path.chmod(0o644)
 print('Created dedicated credentials file.')
 PY
 ```
@@ -140,11 +143,14 @@ in your dedicated shell configuration. Do not store the keys there. Do not use
 for live runtime credentials in this deployment.
 
 Compose file-based secrets are file mounts, not an encrypted vault. They are not
-encrypted at rest by Compose. Use FileVault and a protected account. File
-ownership mapping differs between Desktop versions. If the non-root container
-cannot read a mode-600 secret, test the dedicated directory's sharing settings.
-Do not make the file world-readable, run Hermes as root, or share your full home
-directory. Stop and resolve the file-access problem instead.
+encrypted at rest by Compose. Use FileVault and a protected account. The dedicated
+parent directory is mode 700; other Mac users cannot traverse it to read the
+file. The file is mode 644 for non-root container compatibility: it is readable
+to all processes inside this container. Do not move it to a shared directory.
+File-based Compose secrets do not reliably remap UID/GID or mode. If mode 600
+works on your Desktop version, you may use it after verifying container access.
+If access fails, check the dedicated directory's sharing settings and permissions.
+Do not run Hermes as root or share your full home directory to resolve it.
 
 The loader validates supported keys and numeric IDs. It loads credentials into
 the Hermes process environment, without shell evaluation or printing values.
@@ -266,10 +272,12 @@ docker compose down
 
 Do not use `down --volumes` or `docker volume prune` for this deployment. These
 can delete data. To rotate keys, stop Hermes, edit the dedicated JSON file in a
-local editor, keep mode 600, then recreate the service:
+local editor, keep the parent private and the file readable to the non-root
+container, then recreate the service:
 
 ```sh
-chmod 600 "$HERMES_SECRETS_FILE"
+chmod 700 "$HOME/hermes-private"
+chmod 644 "$HERMES_SECRETS_FILE"
 docker compose up -d --force-recreate
 ```
 
