@@ -1,0 +1,54 @@
+name: hermes-isolated
+
+services:
+  hermes:
+    image: hermes-isolated:local
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.isolated
+    user: "10001:10001"
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 4g
+    cpus: 2.0
+    shm_size: 512m
+    stop_grace_period: 60s
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=512m,mode=1777
+    environment:
+      HERMES_HOME: /opt/data
+      HOME: /opt/data/home
+      XDG_CACHE_HOME: /opt/data/home/.cache
+      PLAYWRIGHT_BROWSERS_PATH: /opt/chromium
+      PYTHONDONTWRITEBYTECODE: "1"
+      TERMINAL_ENV: local
+      TERMINAL_CWD: /opt/data/workspace
+      TZ: Europe/Berlin
+    volumes:
+      - hermes_data:/opt/data
+    secrets:
+      - hermes_credentials
+    networks: [agent]
+    # Long polling needs outbound HTTPS, no published ports or host networking.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  hermes_data:
+    name: ${HERMES_DATA_VOLUME:-hermes-isolated-data}
+
+networks:
+  agent:
+    driver: bridge
+
+secrets:
+  hermes_credentials:
+    # Required absolute path to a dedicated file OUTSIDE the checkout.
+    file: ${HERMES_SECRETS_FILE:?Set HERMES_SECRETS_FILE to your credentials JSON file}

@@ -58,3 +58,8 @@ mini-swe-agent/
 # Nix
 .direnv/
 result
+
+# Isolated deployment: never commit live secrets or state backups.
+secrets/
+backups/
+*credentials*.json

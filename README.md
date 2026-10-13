@@ -173,3 +173,10 @@ python -m pytest tests/ -q
 MIT — see [LICENSE](LICENSE).
 
 Built by [Nous Research](https://nousresearch.com).
+
+## Isolated Mac deployment
+
+For a dedicated data volume, non-root runtime, container-only browser, and
+Telegram phone access, see [the isolated macOS setup guide](docs/ISOLATED_MAC.md).
+This uses `compose.yaml` and a separate Dockerfile. It does not install a
+multi-agent iPhone dashboard or provide absolute isolation.

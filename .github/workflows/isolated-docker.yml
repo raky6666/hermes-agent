@@ -1,0 +1,42 @@
+name: Isolated Docker deployment
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - compose.yaml
+      - docker/**
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - package-lock.json
+      - tests/test_isolated_deployment.py
+      - .github/workflows/isolated-docker.yml
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - name: Validate Compose and build native architecture image
+        env:
+          DOCKER_DEFAULT_PLATFORM: linux/${{ matrix.arch }}
+        run: |
+          export HERMES_SECRETS_FILE="$RUNNER_TEMP/hermes-test-credentials.json"
+          printf '{}\n' > "$HERMES_SECRETS_FILE"
+          docker compose config --quiet
+          docker compose build
+          docker compose run --rm --no-deps -T --entrypoint /opt/hermes/.venv/bin/python hermes /opt/hermes/docker/smoke_isolated.py
+          docker compose run --rm --no-deps -T --entrypoint /opt/hermes/.venv/bin/python hermes /opt/hermes/docker/smoke_isolated.py --verify-persistence
+          docker compose run --rm --no-deps -T --entrypoint /opt/hermes/.venv/bin/python hermes -c 'import subprocess; r=subprocess.run(["/opt/hermes/.venv/bin/python", "/opt/hermes/docker/isolated_entrypoint.py"]); assert r.returncode == 1'
+      - name: Remove disposable test volume
+        if: always()
+        env:
+          HERMES_SECRETS_FILE: ${{ runner.temp }}/hermes-test-credentials.json
+        run: docker compose down --volumes

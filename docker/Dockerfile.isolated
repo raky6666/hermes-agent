@@ -1,0 +1,32 @@
+# Separate image: keep the existing general-purpose Dockerfile unchanged.
+FROM debian:13.4
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git nodejs npm python3 python3-venv python3-pip \
+    ripgrep ffmpeg gcc python3-dev libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -m pip install --break-system-packages --no-cache-dir uv==0.12.23
+
+WORKDIR /opt/hermes
+COPY . .
+# Dedicated hashed Python lock: the upstream uv.lock is stale for this checkout.
+RUN python3 -m venv .venv \
+    && uv pip sync --python .venv/bin/python --require-hashes docker/requirements.isolated.txt \
+    && uv pip install --python .venv/bin/python --no-deps -e .
+RUN npm ci
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/chromium
+RUN ./node_modules/.bin/agent-browser install --with-deps \
+    && chmod -R a+rX /opt/chromium \
+    && rm -rf /var/lib/apt/lists/* /root/.cache
+
+RUN groupadd --gid 10001 hermes && useradd --uid 10001 --gid 10001 \
+    --home-dir /opt/data/home --no-create-home --shell /bin/bash hermes \
+    && mkdir -p /opt/data/home /opt/data/workspace \
+    && chown -R 10001:10001 /opt/data
+ENV PATH=/opt/hermes/.venv/bin:/opt/hermes/node_modules/.bin:$PATH \
+    HERMES_HOME=/opt/data HOME=/opt/data/home \
+    PYTHONDONTWRITEBYTECODE=1
+USER 10001:10001
+WORKDIR /opt/data/workspace
+ENTRYPOINT ["/opt/hermes/.venv/bin/python", "/opt/hermes/docker/isolated_entrypoint.py"]
+CMD ["gateway", "run"]

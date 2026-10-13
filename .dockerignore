@@ -11,3 +11,12 @@ node_modules
 
 # Environment files
 .env
+.env.*
+!.env.example
+secrets/
+backups/
+*credentials*.json
+venv/
+.venv/
+__pycache__/
+.pytest_cache/
